@@ -90,6 +90,17 @@ func SearchUserTokens(userId int, keyword string, token string) (tokens []*Token
 	return tokens, err
 }
 
+// FindTokenByUserIdAndName 根据用户ID和Token名称查找Token
+// 如果找到返回token，不找到返回nil
+func FindTokenByUserIdAndName(userId int, name string) (*Token, error) {
+	var token Token
+	err := DB.Where("user_id = ? AND name = ?", userId, name).First(&token).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	return &token, err
+}
+
 func ValidateUserToken(key string) (token *Token, err error) {
 	if key == "" {
 		return nil, errors.New("未提供令牌")

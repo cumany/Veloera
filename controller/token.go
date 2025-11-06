@@ -139,15 +139,6 @@ func AddToken(c *gin.Context) {
 		})
 		return
 	}
-	key, err := common.GenerateKey()
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "生成令牌失败",
-		})
-		common.SysError("failed to generate token key: " + err.Error())
-		return
-	}
 	// 获取当前认证用户ID
 	userId := c.GetInt("id")
 	// 标识是否管理员为其他用户创建token
@@ -165,6 +156,42 @@ func AddToken(c *gin.Context) {
 		}
 		userId = token.UserId
 		isAdminCreatingForOther = true
+	}
+
+	// 检查是否已存在同名的token，如果存在则直接返回
+	existingToken, err := model.FindTokenByUserIdAndName(userId, token.Name)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "检查令牌时出错",
+		})
+		return
+	}
+	if existingToken != nil {
+		// token已存在，返回现有token
+		if isAdminCreatingForOther {
+			c.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"message": "令牌已存在",
+				"data":    *existingToken,
+			})
+		} else {
+			c.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"message": "令牌已存在",
+			})
+		}
+		return
+	}
+
+	key, err := common.GenerateKey()
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "生成令牌失败",
+		})
+		common.SysError("failed to generate token key: " + err.Error())
+		return
 	}
 
 	cleanToken := model.Token{
