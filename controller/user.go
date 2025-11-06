@@ -1493,3 +1493,12 @@ func GetUserByOidcId(c *gin.Context) {
 	})
 	return
 }
+
+// checkUserViewPermission 检查用户查看权限
+func checkUserViewPermission(c *gin.Context, user *model.User) error {
+	myRole := c.GetInt("role")
+	if myRole <= user.Role && myRole != common.RoleRootUser {
+		return errors.New("无权获取同级或更高等级用户的信息")
+	}
+	return nil
+}
