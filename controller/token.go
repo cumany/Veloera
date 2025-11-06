@@ -148,8 +148,27 @@ func AddToken(c *gin.Context) {
 		common.SysError("failed to generate token key: " + err.Error())
 		return
 	}
+	// 获取当前认证用户ID
+	userId := c.GetInt("id")
+	// 标识是否管理员为其他用户创建token
+	isAdminCreatingForOther := false
+	// 如果请求中指定了user_id且不是当前用户，则需要管理员权限
+	if token.UserId != 0 && token.UserId != userId {
+		// 检查是否有管理员权限
+		role := c.GetInt("role")
+		if role < common.RoleAdminUser {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "无权为其他用户创建令牌",
+			})
+			return
+		}
+		userId = token.UserId
+		isAdminCreatingForOther = true
+	}
+
 	cleanToken := model.Token{
-		UserId:             c.GetInt("id"),
+		UserId:             userId,
 		Name:               token.Name,
 		Key:                key,
 		CreatedTime:        common.GetTimestamp(),
@@ -174,10 +193,19 @@ func AddToken(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "",
-	})
+	// 只有管理员为其他用户创建token时才返回完整信息
+	if isAdminCreatingForOther {
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "",
+			"data":    cleanToken,
+		})
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "",
+		})
+	}
 	return
 }
 
