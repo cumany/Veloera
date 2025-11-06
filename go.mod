@@ -1,7 +1,7 @@
 module veloera
 
-// +heroku goVersion go1.23
-go 1.23
+// +heroku goVersion go1.18
+go 1.23.4
 
 require (
 	github.com/Calcium-Ion/go-epay v0.0.4
