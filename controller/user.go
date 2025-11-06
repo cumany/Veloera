@@ -809,11 +809,22 @@ func CreateUser(c *gin.Context) {
 		})
 		return
 	}
+	// 如果指定了 OIDC ID，检查是否已被使用
+	if user.OidcId != "" {
+		if model.IsOidcIdAlreadyTaken(user.OidcId) {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "该 OIDC ID 已被其他用户使用",
+			})
+			return
+		}
+	}
 	// Even for admin users, we cannot fully trust them!
 	cleanUser := model.User{
 		Username:    user.Username,
 		Password:    user.Password,
 		DisplayName: user.DisplayName,
+		OidcId:      user.OidcId,
 	}
 	if err := cleanUser.Insert(0); err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -825,7 +836,13 @@ func CreateUser(c *gin.Context) {
 
 	// 获取插入后的用户ID
 	var insertedUser model.User
-	if err := model.DB.Where("username = ?", cleanUser.Username).First(&insertedUser).Error; err != nil {
+	query := model.DB.Model(&model.User{})
+	if cleanUser.OidcId != "" {
+		query = query.Where("oidc_id = ?", cleanUser.OidcId)
+	} else {
+		query = query.Where("username = ?", cleanUser.Username)
+	}
+	if err := query.First(&insertedUser).Error; err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
 			"message": "用户创建失败或用户ID获取失败",
@@ -1436,4 +1453,43 @@ func getAndValidateCheckInSettings() (checkInQuota, checkInMaxQuota int, err err
 	}
 
 	return checkInQuota, checkInMaxQuota, nil
+}
+
+// GetUserByOidcId 获取用户信息（通过 OIDC ID）
+// 仅管理员可用
+func GetUserByOidcId(c *gin.Context) {
+	oidcId := c.Param("oidc_id")
+	if oidcId == "" {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "OIDC ID 不能为空",
+		})
+		return
+	}
+
+	var user model.User
+	user.OidcId = oidcId
+	if err := user.FillUserByOidcId(); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "用户不存在",
+		})
+		return
+	}
+
+	// 权限检查：不能查看同级或更高权限的用户信息
+	if err := checkUserViewPermission(c, &user); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    user,
+	})
+	return
 }
