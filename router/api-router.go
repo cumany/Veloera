@@ -53,6 +53,10 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/oauth/telegram/login", middleware.CriticalRateLimit(), controller.TelegramLogin)
 		apiRouter.GET("/oauth/telegram/bind", middleware.CriticalRateLimit(), controller.TelegramBind)
 
+		// API Token 签到端点
+		apiRouter.GET("/check_in_status", middleware.TokenAuth(), controller.CheckInStatus)
+		apiRouter.POST("/check_in", middleware.TokenAuth(), controller.CheckIn)
+
 		userRoute := apiRouter.Group("/user")
 		{
 			userRoute.POST("/register", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.Register)
