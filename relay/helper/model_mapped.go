@@ -32,7 +32,12 @@ func ModelMappedHelper(c *gin.Context, info *common.RelayInfo) error {
 		if err != nil {
 			return fmt.Errorf("unmarshal_model_mapping_failed")
 		}
-		if modelMap[info.OriginModelName] != "" {
+		// 优先使用 UpstreamModelName（全局映射后的模型名）进行匹配
+		// 如果没有匹配，再尝试使用 OriginModelName（原始模型名）
+		if modelMap[info.UpstreamModelName] != "" {
+			info.UpstreamModelName = modelMap[info.UpstreamModelName]
+			info.IsModelMapped = true
+		} else if modelMap[info.OriginModelName] != "" {
 			info.UpstreamModelName = modelMap[info.OriginModelName]
 			info.IsModelMapped = true
 		}

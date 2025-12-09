@@ -50,7 +50,13 @@ func WssHelper(c *gin.Context, ws *websocket.Conn) (openaiErr *dto.OpenAIErrorWi
 		if err != nil {
 			return service.OpenAIErrorWrapperLocal(err, "unmarshal_model_mapping_failed", http.StatusInternalServerError)
 		}
-		if modelMap[relayInfo.OriginModelName] != "" {
+		// 优先使用 UpstreamModelName（全局映射后的模型名）进行匹配
+		// 如果没有匹配，再尝试使用 OriginModelName（原始模型名）
+		if modelMap[relayInfo.UpstreamModelName] != "" {
+			relayInfo.UpstreamModelName = modelMap[relayInfo.UpstreamModelName]
+			// set upstream model name
+			//isModelMapped = true
+		} else if modelMap[relayInfo.OriginModelName] != "" {
 			relayInfo.UpstreamModelName = modelMap[relayInfo.OriginModelName]
 			// set upstream model name
 			//isModelMapped = true
